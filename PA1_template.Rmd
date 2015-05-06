@@ -5,16 +5,68 @@ output:
     keep_md: true
 ---
 
+## Introduction
+This R markdown file is a literate programming document that anwsers questions 
+in the Peer Assessment 1 of the Coursera course Reproducible Research. 
+
+We follow the following conventions regarding citation:
+
+* File names are put between "".
+* Names of R objects are *italicized*
+
+We set the global options so that every code chunk is visible.
+```{r setoptions,echo=TRUE}
+library(knitr)
+opts_chunk$set(echo=TRUE)
+```
 
 ## Loading and preprocessing the data
+It is important that we make sure that this R markdown file and the data file "activity.csv" are in the same work directory.
 
+We load the data into a data frame *initialData*. 
+```{r}
+initialData <- read.csv("activity.csv")
+```
 
+We check the structure and summary of the data frame *initialData*.
+```{r}
+str(initialData)
+summary(initialData)
+```
 
 ## What is mean total number of steps taken per day?
 
+We use the dplyr package to compute the total steps of each day.
+```{r,message=FALSE}
+library(dplyr)
+```
+
+
+```{r}
+stepsByDay <- initialData %>% group_by(date) %>% summarize(total_steps = sum(steps, na.rm =T))
+stepsByDay
+```
+
+```{r,warning=FALSE}
+library(ggplot2)
+
+qplot(total_steps, data=stepsByDay, xlab="total steps in one day",binwidth = 1000)
+
+```
+
+The following is a histogram of the total number of steps taken each day.
+```{r,message=FALSE}
+steps <- as.numeric(stepsByDay$total_steps)
+mean <- mean(steps)
+median <- quantile(steps, probs=0.5)
+```
+
+The mean is `r round(mean, digits=0)`, and the median is `r format(round(median), scientific=F)`.
 
 
 ## What is the average daily activity pattern?
+
+
 
 
 
