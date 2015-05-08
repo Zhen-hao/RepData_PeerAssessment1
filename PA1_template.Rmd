@@ -39,14 +39,14 @@ summary(initialData)
 We use the dplyr package to compute the total steps of each day.
 ```{r,message=FALSE}
 library(dplyr)
-```
 
-
-```{r}
 stepsByDay <- initialData %>% group_by(date) %>% summarize(total_steps = sum(steps, na.rm =T))
-stepsByDay
+str(stepsByDay)
+head(stepsByDay)
+
 ```
 
+The following is a histogram of the total number of steps taken each day.
 ```{r,warning=FALSE}
 library(ggplot2)
 
@@ -54,7 +54,6 @@ qplot(total_steps, data=stepsByDay, xlab="total steps in one day",binwidth = 100
 
 ```
 
-The following is a histogram of the total number of steps taken each day.
 ```{r,message=FALSE}
 steps <- as.numeric(stepsByDay$total_steps)
 mean <- mean(steps)
@@ -66,12 +65,96 @@ The mean is `r round(mean, digits=0)`, and the median is `r format(round(median)
 
 ## What is the average daily activity pattern?
 
+We get the average number of steps taken in each interval averaged across all 
+days by the following R code.
+```{r}
+stepsByInt <- initialData %>% group_by(interval) %>% summarize(average_steps = mean(steps, na.rm =T))
+head(stepsByInt)
+tail(stepsByInt)
+```
 
+The following is a time series plotof the 5-minute interval (x-axis) and the average number of steps taken, averaged across all days (y-axis).
+
+```{r,warning=FALSE}
+
+qplot(y=average_steps, x= interval, data=stepsByInt, ylab="total steps in 5 minutes",xlab="5 minute intervals", geom="line")
+
+```
+
+The 5-minute interval that, on average across all the days in the dataset, contains the maximum number of step is the interval `r stepsByInt$interval[which(stepsByInt$average_steps == max(stepsByInt$average_steps))]`.
 
 
 
 ## Imputing missing values
+We calculate the total number of missing values in the dataset (i.e. the total number of rows with NAs) with the following R code.
 
+```{r}
+totalNA <- sum(is.na(initialData$steps))
+totalNA
+```
+
+Our strategy for filling in all of the missing values in the dataset is to use the mean for that 5-minute interval. The following R code produces a data frame *newData* that contains the new dataset that is equal to the original dataset but with the missing data filled in. The varible for steps is given a new name "Nsteps".
+
+```{r,warning=FALSE}
+#initialData <- arrange(initialData, interval)
+
+newData <- merge(initialData, stepsByInt, by.x="interval", by.y="interval", all = T) 
+newData$steps[is.na(newData$steps)] <- newData$average_steps[is.na(newData$steps)]
+
+newData <- select(newData, steps,date,interval)
+
+head(newData)
+str(newData)
+```
+
+
+We caculate the total number of steps taken each day and plot a histogram of the total number of steps taken each day.
+
+```{r,warning=FALSE}
+
+NstepsByDay <- newData %>% group_by(date) %>% summarize(total_steps = sum(steps))
+ 
+str(NstepsByDay)
+
+qplot(total_steps, data=NstepsByDay, xlab="total steps in one day",binwidth = 1000)
+
+```
+
+```{r,message=FALSE}
+Nsteps <- as.numeric(NstepsByDay$total_steps)
+Nmean <- mean(Nsteps)
+Nmedian <- quantile(Nsteps, probs=0.5)
+```
+The mean is `r format(round(Nmean, digits=0),scientific=F)`, and the median is `r format(round(Nmedian),scientific=F)`.
+
+The new values are larger than the estimates from the first part of the assignment. Another impact of imputing missing data on the estimates of the total daily number of steps is that the distribution of total steps of each day is more centerlized and has smaller variance which is shown in the following table.
+
+```{r}
+print(c( "variance with missing values"= var(steps), "variance after imputing missing values"=var(Nsteps)))
+```
 
 
 ## Are there differences in activity patterns between weekdays and weekends?
+First we need to convert the date variable which has a factor class into date
+class. Then we create a new factor variable "group" in the dataset with two levels "weekday" and "weekend" indicating whether a given date is a weekday or weekend day. The dataset is *group_interval_average* produced by the following R code. 
+
+```{r}
+#First we need to convert the date variable which has a factor class into date
+#class."%Y%m%d"
+newData <- mutate(newData, date = as.Date(as.character(date)))
+
+#str(newData)
+
+group_interval_average <- newData %>% mutate(group = factor(weekdays(date) %in% c("Saturday","Sunday"),labels=c("weekday","weekend"))) %>% group_by(group, interval) %>% summarize(average_step = mean(steps))
+
+str(group_interval_average)
+head(group_interval_average)
+```
+
+The following is a time series plotof the 5-minute interval (x-axis) and the average number of steps taken, averaged across all weekday days or weekend days (y-axis).
+
+```{r,warning=FALSE}
+
+qplot(y=average_step, x= interval, data=group_interval_average, ylab="total steps in 5 minutes",xlab="5 minute intervals",color=group, geom="line", facets=group ~.)
+
+```
